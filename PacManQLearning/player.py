@@ -54,10 +54,10 @@ class Player:
         #print(self.states_value)
 
         # Update Q-value
+        reward = score - self.old_score - 10
         if died:    
             reward = -100
-        else:
-            reward = score - self.old_score
+        #reward += distanceDifference
         if len(self.lastState) > 0:
             last_state = self.lastState[-1]
             last_action = self.lastAction[-1]
@@ -98,7 +98,7 @@ class Player:
 
     # Saves the Q-table.
     def savePolicy(self):
-        fw = open('trained_controller_03', 'wb')
+        fw = open('trained_controller', 'wb')
         pickle.dump(self.states_value, fw)
         fw.close()
 

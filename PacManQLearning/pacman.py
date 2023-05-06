@@ -11,6 +11,7 @@ class Pacman(Entity):
         self.name = PACMAN    
         self.color = YELLOW
         self.direction = LEFT
+        self.target = node
         self.setBetweenNodes(LEFT)
         self.alive = True
         self.sprites = PacmanSprites(self)

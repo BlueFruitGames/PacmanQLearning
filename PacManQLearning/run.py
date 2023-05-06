@@ -102,6 +102,7 @@ class GameController(object):
 
     def update(self, isRendering):
         dt = self.clock.tick(30) / 1000.0
+        #dt = 30 / 1000.0
         self.textgroup.update(dt)
         self.pellets.update(dt)
         if not self.pause.paused:
@@ -225,9 +226,9 @@ class GameController(object):
         self.startGame()
         self.textgroup.updateLevel(self.level)
 
-    def restartGame(self):
+    def restartGame(self, level = 0):
         self.lives = 5
-        self.level = 0
+        self.level = level
         self.pause.paused = True
         self.fruit = None
         self.startGame()
