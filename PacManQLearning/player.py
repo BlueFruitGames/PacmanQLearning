@@ -49,21 +49,20 @@ class Player:
     
     # The main method required by the game. Called every time that
     # Pacman is expected to move.
-    def getAction(self, state, possible_directions, score, died, currentAliveStatus):
+    def getAction(self, state, possible_directions, score, died):
         # print("___________________________")
         #print(self.states_value)
 
         # Update Q-value
-        reward = score - self.old_score - 10
-        if died:    
-            reward = -100
-        #reward += distanceDifference
+        reward = score - self.old_score
+
+        if reward <= 0:
+            reward -= 10
         if len(self.lastState) > 0:
             last_state = self.lastState[-1]
             last_action = self.lastAction[-1]
             max_q = self.getMaxQ(state, possible_directions)
-            if currentAliveStatus or died:
-                self.updateQ(last_state, last_action, reward, max_q)
+            self.updateQ(last_state, last_action, reward, max_q)
 
         # (Explore vs Exploit)
         # Check if random action should be taken.
@@ -97,8 +96,8 @@ class Player:
         self.lastAction = []
 
     # Saves the Q-table.
-    def savePolicy(self):
-        fw = open('trained_controller', 'wb')
+    def savePolicy(self, fileName):
+        fw = open(fileName, 'wb')
         pickle.dump(self.states_value, fw)
         fw.close()
 

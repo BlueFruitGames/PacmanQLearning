@@ -11,10 +11,10 @@ class Pacman(Entity):
         self.name = PACMAN    
         self.color = YELLOW
         self.direction = LEFT
-        self.target = node
         self.setBetweenNodes(LEFT)
         self.alive = True
         self.sprites = PacmanSprites(self)
+        self.learntDirection = STOP
 
     def reset(self):
         Entity.reset(self)
@@ -28,10 +28,11 @@ class Pacman(Entity):
         self.alive = False
         self.direction = STOP
 
-    def update(self, dt):	
+    def update(self, dt):
         self.sprites.update(dt)
         self.position += self.directions[self.direction]*self.speed*dt
-        direction = self.learntDirection
+        # direction = self.getValidKey()
+        direction = self.getDirection()
         if self.overshotTarget():
             self.node = self.target
             if self.node.neighbors[PORTAL] is not None:
@@ -48,6 +49,9 @@ class Pacman(Entity):
         else: 
             if self.oppositeDirection(direction):
                 self.reverseDirection()
+
+    def getDirection(self):
+        return self.learntDirection 
 
     def getValidKey(self):
         key_pressed = pygame.key.get_pressed()

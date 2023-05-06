@@ -100,9 +100,12 @@ class GameController(object):
 
         
 
-    def update(self, isRendering):
-        dt = self.clock.tick(30) / 1000.0
-        #dt = 30 / 1000.0
+    def update(self):
+        if RENDER:
+            dt = self.clock.tick(30) / 1000.0
+        else:
+            dt = 1.0 / 30.0
+            
         self.textgroup.update(dt)
         self.pellets.update(dt)
         if not self.pause.paused:
@@ -132,7 +135,7 @@ class GameController(object):
         if afterPauseMethod is not None:
             afterPauseMethod()
         self.checkEvents()
-        if(isRendering):
+        if(RENDER):
             self.render()
 
     def checkEvents(self):

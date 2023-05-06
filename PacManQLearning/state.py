@@ -13,7 +13,8 @@ class State:
         self.finalScore = 0
         self.closeDistance = 80
         self.closestPellet = None
-        self.ghostDistanceDifference = 0
+        self.ghostDistance = 0
+        self.lastghostDistance = 0
         self.closeDistance = sys.maxsize
         self.time = int(time.time())
     
@@ -26,42 +27,36 @@ class State:
         directions = []
         for ghost in ghosts:
             
-            distance = math.sqrt((pacman_target.y - ghost.position.x)**2 + (pacman_target.y - ghost.position.y)**2)
-          
-            vec = (ghost.position.x - pacman_target.x, ghost.position.y - pacman_target.y)
-            
-            convertedDistance = 0
-            if(distance <= 60):
-                convertedDistance = 1
+            distance = math.sqrt((pacman_target.y - ghost.position.x)**2 + (pacman_target.y - ghost.position.y)**2)           
             
             vec = (ghost.position.x - pacman_target.x, ghost.position.y - pacman_target.y)
             if abs(vec[1]) >= abs(vec[0]): 
                 if vec[1] >= 0:
-                    directions.append((DOWN, convertedDistance, ghost.mode.current))
+                    directions.append((DOWN, int(distance), ghost.mode.current))
                 else:
-                    directions.append((UP, convertedDistance, ghost.mode.current))
+                   directions.append((UP, int(distance), ghost.mode.current))
             else: 
                 if vec[0] >= 0:
-                   directions.append((RIGHT, convertedDistance, ghost.mode.current))
+                    directions.append((RIGHT, int(distance), ghost.mode.current))
                 else:
-                    directions.append((LEFT, convertedDistance, ghost.mode.current))
+                    directions.append((LEFT, int(distance), ghost.mode.current)) 
 
         sorted_distance = []
 
         while len(directions):
             index_to_remove = -1
-            smallest_mapped_distance = sys.maxsize
+            smallest_distance = sys.maxsize
             current_direction = None
             current_mode = None
             current_index = -1
-            for (direction, mapped_distance, mode) in directions:
+            for (direction, distance, mode) in directions:
                 current_index += 1
-                if(mapped_distance < smallest_mapped_distance):
-                    smallest_mapped_distance = mapped_distance
+                if(distance < smallest_distance):
+                    smallest_distance = distance
                     index_to_remove = current_index
                     current_direction = direction
                     current_mode = mode
-            sorted_distance.append((current_direction, smallest_mapped_distance, current_mode))
+            sorted_distance.append((current_direction, int(smallest_distance), current_mode))
             del directions[index_to_remove]
 
 
@@ -95,40 +90,18 @@ class State:
                     return LEFT, int(closest_distance)    
         else:
             return None, -1
-       
-        
-        
-    def getClosestGhostDirection(self, ghosts, pacman_target):
-        closest_ghost = None
-        closest_distance = 0
-        for ghost in ghosts:
-            distance = math.sqrt((pacman_target.x - ghost.position.x)**2 + (pacman_target.y - ghost.position.y)**2)
-            if closest_ghost is None or distance < closest_distance:
-                closest_ghost = ghost
-                closest_distance = distance
-        
-        if closest_distance <= self.closeDistance:
-            vec = (closest_ghost.position.x - pacman_target.x, closest_ghost.position.y - pacman_target.y)
-            if abs(vec[1]) >= abs(vec[0]): 
-                if vec[1] >= 0:
-                    return DOWN
-                else:
-                    return UP
-            else: 
-                if vec[0] >= 0:
-                    return RIGHT
-                else:
-                    return LEFT
-        else: 
-            return None
 
     # Updates the state with the current game world's information.
     def updateState(self, ghosts, pacman_target, pacman_pos, pellets):
         curGhostDirections = self.getGhostDirections(ghosts, pacman_pos)
-        closestPelletDir, closestPelletDist = self.getClosestPellet(pellets, pacman_pos)
-        #print(closestPelletDir, closestPelletDist)
-        #self.state = [int(pacman_target[0]), int(pacman_target[1]), curGhostDirections[0][0], curGhostDirections[0][1], curGhostDirections[1][0], curGhostDirections[1][1], curGhostDirections[2][0], curGhostDirections[2][1], curGhostDirections[3][0], curGhostDirections[3][1], closestPelletDir, closestPelletDist]
-        self.state = [curGhostDirections[0][0], curGhostDirections[1][0], curGhostDirections[3][0], closestPelletDir, closestPelletDist]
+        closetPelletDirection = self.getClosestPellet(pellets, pacman_pos)
+        
+        self.state = [int(pacman_target[0]), int(pacman_target[1]),
+                      curGhostDirections[0][0],
+                      curGhostDirections[1][0],
+                      curGhostDirections[2][0],
+                      curGhostDirections[3][0],
+                      closetPelletDirection[0], closetPelletDirection[1]]
         
         #curGhostDirection = self.getGhostDirections(ghosts, pacman_pos)
         #self.state = [closestPelletDir]
@@ -136,15 +109,17 @@ class State:
     
 
     # Apply the chosen action (direction) to the game.
-    def applyAction(self, game, direction, isRendering):
+    def applyAction(self, game, direction):
         game.pacman.learntDirection = direction
-        game.update(isRendering)
+        game.update()
     
     # Checks if game is over i.e. level completed or all lives lost.
     def gameEnded(self, game):
         if game.lives <= 0 :
             self.isEnd = True
             self.finalScore = game.score
+            with open("scores.txt", "a") as myfile:
+                myfile.write(str(self.finalScore) + "\n")
             self.level = 0
             return 0
         if len(game.pellets.pelletList) <= 0:
@@ -153,7 +128,9 @@ class State:
             self.level += 1
         if game.level > self.level:
             return 1
-        if self.time + 20 < int(time.time()):
+        if USETIMER and (self.time + 20 < int(time.time())):
+            self.isEnd = True
+            self.finalScore = game.score
             return 1
         else:
             return None
@@ -169,17 +146,15 @@ class State:
                     game.showEntities()
 
     # Main method for training.
-    def play(self, iterations=100):
-        isRendering = True
+    def play(self, file, iterations=100):
         for i in range(iterations):
             if i % 1 == 0:
                 print("Iterations {}".format(i))
-            if i % 50 == 0:
-                None
-                #p1.savePolicy()
+            if i % 50 == 0 and SAVEPOLICY:
+                p1.savePolicy(file)
             game = GameController()
             game.startGame()
-            game.update(isRendering)
+            game.update()
             pacman_target = game.nodes.getPixelsFromNode(game.pacman.target)
             pacman_pos = game.pacman.position
             self.updateState(game.ghosts, pacman_target, pacman_pos, game.pellets)
@@ -195,9 +170,9 @@ class State:
                 lastAliveStatus = currentAliveStatus
 
                 possible_directions = self.availableDirections(game.pacman)
-                p1_action = self.p1.getAction(self.state, possible_directions, game.score, died, currentAliveStatus)
+                p1_action = self.p1.getAction(self.state, possible_directions, game.score, died)
                 # take action and update board state
-                self.applyAction(game, p1_action, isRendering)
+                self.applyAction(game, p1_action)
                 pacman_target = game.nodes.getPixelsFromNode(game.pacman.target)
                 pacman_pos = game.pacman.position
                 self.updateState(game.ghosts, pacman_target, pacman_pos, game.pellets)
@@ -234,28 +209,30 @@ if __name__ == "__main__":
     # NU: The Length of Walk
     # number of iterations that will be carried out in a sequence of connected actions.
     
-    exploration_rho = 0.1
-    lr_alpha = 0.1
+    exploration_rho = 0.3
+    lr_alpha = 0.2
     discount_rate_gamma=0.9
     walk_len_nu = 0.2
     
     # training
     from player import *
-    """
+    fileName = "trained_controller_02"
     
+
+    """
     p1 = Player("p1", exploration_rho, lr_alpha, discount_rate_gamma, walk_len_nu)
     st = State(p1)
 
  
     # # # TRAINING
     ("Training...")
-    st.play(10000)
-    p1.savePolicy()
+    st.play(fileName, 10000)
+    p1.savePolicy(fileName)
     
     """
     # DEMO
     demo_p1 = Player("demo", exploration_rho=0, lr_alpha=0)
-    demo_p1.loadPolicy("trained_controller")
+    demo_p1.loadPolicy(fileName)
     stDemo = State(demo_p1)
-    stDemo.play()
+    stDemo.play(fileName)
     
