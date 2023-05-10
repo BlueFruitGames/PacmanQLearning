@@ -216,7 +216,7 @@ if __name__ == "__main__":
     
     # training
     from player import *
-    fileName = "trained_controller_02"
+    fileName = "trained_controller_final"
     
 
     """
